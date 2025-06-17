@@ -8,7 +8,7 @@ __artifacts_v2__ = {
         "requirements": "none",
         "category": "Ford Vehicles",
         "notes": "",
-        "paths": ('*/BTPhonebook*'),
+        "paths": ('*/BTPhonebook*','*/deleted*'),
         "function": "get_PhoneBook"
     }
 }
@@ -45,48 +45,51 @@ def format_number(number: str) -> str:
 ## Get connected Bluetooth Devices
 def get_PhoneBook(files_found, report_folder, seeker, wrap_text, time_offset):
     data_list = []
+    file_path_list = []
     for file_found in files_found:
-        with open(file_found, "r") as f:
-            for line in f:  # Search line for certain keywords
-                found_num = False
-                if line == "":
-                    continue
-                splits1 = ''
-                if "address	insert" in line:
-                    name = phone_number = '' # Initialize Variables
-                    splits1 = line.split("ADDRESS")[0]
-                    lineparts = splits1.split("\t")
-                    for entry in lineparts:
-                        if entry != '':
-                            if found_num:
-                                if entry[-1].isnumeric() and len(entry) >= 10:
-                                    new_number = format_number(entry)
-                                    if new_number not in phone_number:
-                                        phone_number = phone_number + new_number + ", "
+            if not os.path.isfile(file_found):
+                continue
+            with open(file_found, "r", encoding="utf-8", errors="replace") as f:
+                for line in f:  # Search line for certain keywords
+                    found_num = False
+                    if line == "":
+                        continue
+                    splits1 = ''
+                    if "address	insert" in line:
+                        name = phone_number = '' # Initialize Variables
+                        splits1 = line.split("ADDRESS")[0]
+                        lineparts = splits1.split("\t")
+                        for entry in lineparts:
+                            if entry != '':
+                                if found_num:
+                                    if entry[-1].isnumeric() and len(entry) >= 10:
+                                        new_number = format_number(entry)
+                                        if new_number not in phone_number:
+                                            phone_number = phone_number + new_number + ", "
+                                    else:
+                                        continue
                                 else:
-                                    continue
+                                    if entry == "address" or entry == "insert" or entry.isnumeric():
+                                        continue
+                                    elif entry == "NUMBERS":
+                                        found_num = True
+                                    else:
+                                        name += entry + " "
                             else:
-                                if entry == "address" or entry == "insert" or entry.isnumeric():
-                                    continue
-                                elif entry == "NUMBERS":
-                                    found_num = True
-                                else:
-                                    name += entry + " "
-                        else:
-                            continue
-                    
-                    name = name.strip()
-                    phone_number = phone_number.strip()[0:-1]
-                # Add found item to data list                
-                if (name, phone_number) not in data_list and name != '' and phone_number != "":
-                    data_list.append((name, phone_number)) # Add new found data to datalist
-    
+                                continue
+                        file_path_list.append(file_found)
+                        name = name.strip()
+                        phone_number = phone_number.strip()[0:-1]
+                        # Add found item to data list                
+                        if (name, phone_number) not in data_list and name != '' and phone_number != "":
+                            data_list.append((name, phone_number)) # Add new found data to datalist
+
     if len(data_list) > 0: # Check to see if Data Found
         report = ArtifactHtmlReport('Phonebook Contacts')
         report.start_artifact_report(report_folder, f'Phonebook Contacts')
         report.add_script()
         data_headers = ("Name", "Phone Number(s)")
-        report.write_artifact_data_table(data_headers, data_list, file_found)
+        report.write_artifact_data_table(data_headers, data_list, file_path_list)
         report.end_artifact_report()
         tsvname = f'Phonebook Contacts'
         tsv(report_folder, data_headers, data_list, tsvname)
