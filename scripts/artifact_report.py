@@ -85,14 +85,25 @@ class ArtifactHtmlReport:
             raise ValueError('Output report file is closed/unavailable!')
 
         num_entries = len(data_list)
-        if write_total:
-            self.write_minor_header(f'Total number of entries: {num_entries}', 'h6')
         if write_location:
-            if is_platform_windows():
-                source_path = source_path.replace('/', '\\')
-            if source_path.startswith('\\\\?\\'):
-                source_path = source_path[4:]
-            self.write_lead_text(f'{self.artifact_name} located at: {source_path}')
+            if isinstance(source_path, (list, tuple)):
+                cleaned_paths = []
+                for sp in source_path:
+                    if is_platform_windows():
+                        sp = sp.replace('/', '\\')
+                    if sp.startswith('\\\\?\\'):
+                        sp = sp[4:]
+                    cleaned_paths.append(sp)
+                unique_paths = sorted(set(cleaned_paths))
+                self.write_lead_text(f'{self.artifact_name} located at:')
+                for path in unique_paths:
+                    self.write_raw_html(f'{path}<br>')
+            else:
+                if is_platform_windows():
+                    source_path = source_path.replace('/', '\\')
+                if source_path.startswith('\\\\?\\'):
+                    source_path = source_path[4:]
+                self.write_lead_text(f'{self.artifact_name} located at: {source_path}')
 
         self.report_file.write('<br />')
 
